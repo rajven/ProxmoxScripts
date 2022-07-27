@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# ----------------------------------------------------------
+# Wrapper for smartctl for supporting HP Smart Array, LSI MegaRaid and USB
+# Sandisk.
+#
+# Author: joanandk
+# Created: Apr 28, 2022
+# Modified: rajven
+# License: GNU Affero General Public License
+# Inspired by: udo.rader@bestsolution.at
+# ----------------------------------------------------------
+# Instructions:
+# Move the binary in /usr/sbin/smartctl to smartctl.orig
+# create a script with this code and make it executable
+
+SMARTCTL=/usr/sbin/smartctl.orig
+
+# Get the block name:
+OPTIONS=("$*")
+TEMP=${OPTIONS#*/dev/}
+[ -z "${TEMP}" ] && exit
+PD_ADR="${TEMP:0:3}"
+
+SA_VENDOR=""
+
+SA_VENDOR=$(lspci -D | grep "LSI MegaRAID" | cut -d\  -f1)
+SA_DRV="sat+megaraid"
+if [ -z "${SA_VENDOR}" ]; then
+    SA_VENDOR=$(lspci -D | grep "Smart Array" | cut -d\  -f1)
+    SA_DRV="cciss"
+    fi
+SA_ID=${SA_VENDOR}
+SA_PD=$(readlink /sys/class/block/$PD_ADR | grep $SA_ID)
+
+if [ ! -z ${SA_ID} ] && [ ! -z ${SA_PD} ]; then
+   PD_ALL=$(readlink /sys/block/sd* | grep $SA_ID | rev | cut -d/ -f1 | rev)
+   INDEX=0
+   for Search_PD in $PD_ALL; do
+      if [ "${PD_ADR}" == "${Search_PD}" ]; then
+         OPTIONS="-d ${SA_DRV},${INDEX} ${OPTIONS}"
+         break
+      fi
+      INDEX=$[$INDEX+1]
+   done
+fi
+
+# Hack for USB pendrives:
+USB_DEV=$(readlink /sys/class/block/$PD_ADR | grep usb | cut -d/ -f6)
+if [ ! -z ${USB_DEV} ]; then
+   OPTIONS="-d scsi ${OPTIONS}"
+fi
+
+logger -t smartctl "Actual run: $SMARTCTL ${OPTIONS}"
+
+$SMARTCTL ${OPTIONS}
+res=$?
+
+exit ${res}

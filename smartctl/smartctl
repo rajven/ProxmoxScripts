@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # ----------------------------------------------------------
-# Wrapper for smartctl for supporting HP Smart Array, LSI MegaRaid and USB
+# Wrapper for smartctl for supporting HP P2XX/P4XX/P8XX HBA's and USB
 # Sandisk.
 #
-# Author: joanandk
-# Created: Apr 28, 2022
-# Modified: rajven
+# Author: lclements0
+# Created: Apr 28, 2022 by joanandk
+# Modified: July 27, 2022 by rajven
 # License: GNU Affero General Public License
 # Inspired by: udo.rader@bestsolution.at
 # ----------------------------------------------------------
@@ -22,27 +22,29 @@ TEMP=${OPTIONS#*/dev/}
 [ -z "${TEMP}" ] && exit
 PD_ADR="${TEMP:0:3}"
 
-SA_VENDOR=""
-
-SA_VENDOR=$(lspci -D | grep "LSI MegaRAID" | cut -d\  -f1)
+SA_VENDOR=($(lspci -D | grep "LSI MegaRAID" | cut -d\  -f1))
 SA_DRV="sat+megaraid"
 if [ -z "${SA_VENDOR}" ]; then
     SA_VENDOR=$(lspci -D | grep "Smart Array" | cut -d\  -f1)
+    SA_VENDOR=($(lspci -D | grep "Smart Array" | cut -d\  -f1))
     SA_DRV="cciss"
     fi
 SA_ID=${SA_VENDOR}
-SA_PD=$(readlink /sys/class/block/$PD_ADR | grep $SA_ID)
-
-if [ ! -z ${SA_ID} ] && [ ! -z ${SA_PD} ]; then
-   PD_ALL=$(readlink /sys/block/sd* | grep $SA_ID | rev | cut -d/ -f1 | rev)
-   INDEX=0
-   for Search_PD in $PD_ALL; do
-      if [ "${PD_ADR}" == "${Search_PD}" ]; then
-         OPTIONS="-d ${SA_DRV},${INDEX} ${OPTIONS}"
-         break
-      fi
-      INDEX=$[$INDEX+1]
-   done
+if [ ! -z ${SA_ID} ]; then
+        for i in "${SA_ID[@]}"; do
+        SA_PD=$(readlink /sys/class/block/$PD_ADR | grep $i)
+                if [ ! -z ${SA_PD} ]; then
+                   PD_ALL=$(readlink /sys/block/sd* | grep $i | rev | cut -d/ -f1 | rev)
+                   INDEX=0
+                   for Search_PD in $PD_ALL; do
+                      if [ "${PD_ADR}" == "${Search_PD}" ]; then
+                         OPTIONS="-d ${SA_DRV},${INDEX} ${OPTIONS}"
+                         break 2
+                      fi
+                      INDEX=$[$INDEX+1]
+                   done
+                fi
+        done
 fi
 
 # Hack for USB pendrives:

@@ -25,7 +25,6 @@ PD_ADR="${TEMP:0:3}"
 SA_VENDOR=($(lspci -D | grep "LSI MegaRAID" | cut -d\  -f1))
 SA_DRV="sat+megaraid"
 if [ -z "${SA_VENDOR}" ]; then
-    SA_VENDOR=$(lspci -D | grep "Smart Array" | cut -d\  -f1)
     SA_VENDOR=($(lspci -D | grep "Smart Array" | cut -d\  -f1))
     SA_DRV="cciss"
     fi

@@ -28,6 +28,10 @@ if [ -z "${SA_VENDOR}" ]; then
     SA_VENDOR=($(lspci -D | grep "Smart Array" | cut -d\  -f1))
     SA_DRV="cciss"
     fi
+if [ -z "${SA_VENDOR}" ]; then
+    SA_VENDOR=($(lspci -D | grep "PERC" | cut -d\  -f1))
+    SA_DRV="megaraid"
+    fi
 SA_ID=${SA_VENDOR}
 if [ ! -z ${SA_ID} ]; then
         for i in "${SA_ID[@]}"; do
